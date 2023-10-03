@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "pyetg1510"
+description = "EtherCAT Master Diagnosis Interface library for Python"
+authors = ["Takashi Ichihashi <t.ichihashi@bekchoff.co.jp>"]
+readme = "README.md"
+license = "BSD-4-Clause"
+version = "0.0.0"
+classifiers = [
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+[tool.poetry.dependencies]
+python = "^3.11"
+poethepoet = "^0.24.0"
+bitarray = "^2.8.2"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.2"
+pytest-mock = "^3.11.1"
+pytest-mockservers = "^0.6.0"
+
+[build-system]
+requires = ["poetry-core", "poetry-dynamic-versioning"]
+build-backend = "poetry_dynamic_versioning.backend"
+
+[tool.poetry-dynamic-versioning]
+enable = true
+style = "pep440"
+
+[tool.black]
+line-length = 119
+
+[tool.poe.tasks]
+readme.shell = "cp docs/source/README.md README.md"
+makedoc.shell = "sphinx-apidoc -f -o ./docs/source ./pyetg1510"
+makehtml.shell = "sphinx-build -M html docs/source/ docs/build/"
