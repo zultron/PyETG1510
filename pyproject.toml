@@ -17,6 +17,7 @@ bitarray = "^2.8.2"
 pytest = "^7.4.2"
 pytest-mock = "^3.11.1"
 pytest-mockservers = "^0.6.0"
+nuitka = "^1.8.3"
 
 [build-system]
 requires = ["poetry-core", "poetry-dynamic-versioning"]
@@ -30,6 +31,6 @@ style = "pep440"
 line-length = 119
 
 [tool.poe.tasks]
-readme.shell = "cp docs/source/README.md README.md"
+readme.shell = "cat docs/source/README.md README.md | sed -r 's/\\!\\[(.+?)\\]\\(([^\\s\\)]+).*\\)/\\!\\[\\1\\]\\(docs\\/source\\/\\2\\)/g' > README.md"
 makedoc.shell = "sphinx-apidoc -f -o ./docs/source ./pyetg1510"
 makehtml.shell = "sphinx-build -M html docs/source/ docs/build/"
