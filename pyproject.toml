@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "pyetg1510"
-description = "EtherCAT Master Diagnosis Interface library for Python"
+description = "ETG.1510 EtherCAT Master Diagnosis Interface client library for Python"
 authors = ["Takashi Ichihashi <t.ichihashi@bekchoff.co.jp>"]
 homepage = "https://ta-ichihashi.github.io/PyETG1510/index.html"
 repository = "https://github.com/ta-ichihashi/PyETG1510"
 readme = "README.md"
 license = "BSD-4-Clause"
-version = "0.0.0"
+version = "0.1.0"
 classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules"
 ]

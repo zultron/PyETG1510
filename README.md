@@ -1,52 +1,30 @@
-# ETG.1510 Master Diagnosis Interface client library for Python
+This package is client software that acquire diagnostic information from the EtherCAT master with vendor independent.
 
-本パッケージは、UDP/IPによりEtherCATメインデバイスのMailbox Gateway(ETG.8200)を経由し、メインデバイスのSDOエントリに格納された各種診断
-情報（ETG.1510）を収集します。
+Various diagnostic information defined as the ETG.1510 SDO entries at the EtherCAT master, these are possible to be acquired 
+via Mailbox Gateway (ETG.8200).
 
-メインデバイスが、全てのETG.1510のオブジェクトディクショナリ（OD）すべてをサポートしているとは限りません。また、ETG.1510 で規定されている
-``VISIBLE_STRING``はサイズが固定ではなく、メインデバイスの仕様に依存します。
+The EtherCAT master supports not a whole OD entries of ETG.1510 specified but a partially by each vendor, further the data size of ``VISIBLE_STRING`` types is not specified on ETG 1510.
 
-したがって、本ライブラリでは次のとおり二つの機能をサポートします。
+Therefore, as first the client has to fetch SDO information by SDO information service due to know these information.
 
-1. SDO Information Service により、EtherCAT メインデバイスのオブジェクトディクショナリ情報を収集します。
-2. 収集したOD情報に基づき、SDO Uploadコマンドにより診断データを収集します。
+This package has the following features.
 
-## インストール
+1. Acquire object dictionaries (OD) from EtherCAT master by using SDO information service. And makes python dictionary type data with a valid SDO index as the key and SDO container as the value.
+2. Acquire diagnosis data from EtherCAT master using based on valid OD entries dictionary.
+
+These data are possible to be acquired by python asynchronous iterator.
+
+## Installation
 
 ```shell
 $ pip install pyetg1510
 ```
 
-## 接続準備
+## Connection
 
-本クライアントを実行するコンピュータからEtherCATメインデバイスが存在するコンピュータと別の場合、ネットワーク設定が必要です。
-例えばBeckhoff TwinCATでは、次図のとおりEtherCATメインデバイスとWindowsで明確な境界があります。
+If you want to know connect to Mailbox Gateway host address, Please see homepage.
 
-![](docs/source/connection.png)
-
-このため、次のとおりOSのネットワーク設定を行う必要があります。
-
-### EtherCATメインデバイスのあるコンピュータで実行する場合
-
-Mailboxゲートウェイのホストアドレス（IPアドレス）を設定してください。図の例では`192.168.2.254`とします。
-
-* WindowsネットワークとMailboxゲートウェイを接続、および、IP Routingを有効にしてください。
-* Windowsのネットワーク設定で、EtherCATが占有しているネットワークカードに対するIPアドレスを設定します。図の例では`192.168.2.10/24`とします。
-* Windowsのネットワーク設定で、外部のLANと接続するネットワークカードに対するIPアドレスを設定します。図の例では`192.168.1.10/24`とします。
-
-### EtherCATメインデバイスを外部から接続したリモートコンピュータで実行する場合 (**非推奨**)
-
-前節の項目の設定に加えて以下の対応が必要です。ただし、セキュリティ上問題がありますのでお勧めしません。
-
-* ファイアウォール設定でUDP/IP の Port 34980 のInboundを許可します
-* リモートコンピュータのIPアドレスを、EtherCATメインデバイスのコンピュータと接続したネットワークと同じネットワークアドレスでIPアドレスを設定します。図の例では、`192.168.1.11/24`とします。
-* Windowsであれば管理者モードでターミナル軌道し、次のとおりrouteコマンドを入力します。Mainboxゲートウェイの192.168.2.254へ接続するには、192.168.1.10にルーティングしてもらうための設定です。
-    
-   ``` powershell
-   > route add 192.168.2.0/24 192.168.1.10
-   ```
-
-## クイックスタート
+## Quick start
 
 ``` python
 from pyetg1510 import EtherCATMasterConnection, MasterODSpecification, ETG1510Profile
@@ -54,60 +32,67 @@ from dataclasses import fields
 import asyncio
 from pprint import pprint
 
+async def get_etg1510_whole_data(etg1510: ETG1510Profile):
+    # As first, getting SDO specification with SDO information service.
+    await etg1510.master_od.get_object_dictionary()
+    # Getting sdo data by ETG.1510 profile generator.
+    async for entry, data in etg1510:
+        pprint({hex(entry): {f.name: getattr(data, f.name).value for f in fields(data)}})
+
 
 async def get_etg1510_data(etg1510: ETG1510Profile):
-    """インデックスを指定してSDOを取得する例"""
-
+    # As first, getting SDO specification with SDO information service.
     await etg1510.master_od.get_object_dictionary()
-    """SDO Information serviceによりメインデバイスODデータを収集"""
+    # Getting sdo data by ETG.1510 profile generator.
+    watch_list = list(etg1510.sdo_database.keys())
+    # only diagnosis data
+    diag_list = list(filter(lambda x: 0xA000 <= x <= 0xAFFF, watch_list))
+    diag_list.append(0xF120)
 
-    whole_list = list(etg1510.sdo_database.keys())
-    """マスターのODからインデックスリストを取得する"""
-    
-    watch_list = list(filter(lambda x: 0xa000 <= x <= 0xafff, whole_list))
-    """0xa000から0xafffまでのリストにフィルタリング"""
-
-    for index in watch_list:
+    for index in diag_list:
         sdo = await etg1510.get_sdo(index)
-        """get_sdoメソッドでインデックスを指定してSdoDataBody型のSDOを取得する"""
         pprint({hex(index): {f.name: getattr(sdo, f.name).value for f in fields(sdo)}})
 
-async def get_etg1510_whole_data(etg1510: ETG1510Profile):
-    """イテレータを用いて全てのSDOを順次取得する例"""
 
-    await etg1510.master_od.get_object_dictionary()
-    """SDO Information serviceによりメインデバイスODデータを収集"""
+# Press the green button in the gutter to run the script.
+if __name__ == "__main__":
+    # logging settings
+    SysLog.console_log_configuration(LoggingLevel.DISABLE)
+    SysLog.syslog_configuration(LoggingLevel.DISABLE)
+    SysLog.rotation_log_configuration(LoggingLevel.WARNING)
+    SysLog.set_loglevel(LoggingLevel.WARNING)
 
-    async for entry, data in etg1510:
-        """
-        非同期イテレータにより順次SDOインデックスとそのデータのタプルを順次取得してpprintで整形して標準出力
-    
-        Returns:
-            entry(int): SDO インデックス
-            data(dataclass): complete accessで取得した全エントリをdataclassをコンテナとして取得。
-                             dataclassのメンバはSdoEntry型として取得可能。
-        """
-        pprint({hex(entry): {
-                    f.name: getattr(data, f.name).value for f in fields(data)
-                }
-            }
-        )
+    def is_valid_ip(addr):
+        try:
+            inet_aton(addr)
+            return True
+        except:
+            return False
 
-if __name__ == '__main__':
-    connection = EtherCATMasterConnection('192.168.2.254', 34980)
-    """UDP/IP通信インスタンス作成。Mailbox gatewayのIPアドレス, Portを指定"""
-    master_od = MasterODSpecification(connection=connection)
-    """SDO Information servieのインスタンス作成"""
-    etg1510 = ETG1510Profile(master_od=master_od)
-    """ETG.1510 の診断データイテレータ作成"""
+    args = sys.argv
+    if len(args) < 2:
+        print("Please specify ip address of mailbox gateway.")
+        exit(-1)
+    elif not is_valid_ip(args[1]):
+        print(f"Wrong ip address has been specified. {args[1]}")
+        exit(-1)
+    else:
+        ipaddress = args[1]
+
+    # UDP/IP communication instance
+    connection = EtherCATMasterConnection(ipaddress, 34980)
+    # SDO Information service instance
+    master_config = MasterODSpecification(connection=connection)
+    # ETG.1510 SDO update command generator
+    etg1510 = ETG1510Profile(master_od=master_config)
+    # get sdo data on an asynchronous task.
     asyncio.run(get_etg1510_data(etg1510))
-    """非同期タスクによりETG.1510のSDOデータを収集"""
 ```
 
-上記のプログラムを実行すると、以下のとおり標準出力されます。
+This sample would be worked as below.
 
 ```bash
-$ python etg1510.py
+$ python etg1510.py 192.168.2.254
 {'0x1000': {'DeviceType': 0}}
 {'0x1008': {'DeviceName': 'TwinCAT EtherCAT Master'}}
 {'0x1009': {'HardwareVersion': '0'}}
