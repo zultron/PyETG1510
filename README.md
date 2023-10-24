@@ -27,9 +27,12 @@ If you want to know connect to Mailbox Gateway host address, Please see homepage
 ## Quick start
 
 ``` python
-from pyetg1510 import EtherCATMasterConnection, MasterODSpecification, ETG1510Profile
+# This is a sample Python script.
+from pyetg1510 import EtherCATMasterConnection, MasterODSpecification, ETG1510Profile, SysLog, LoggingLevel
 from dataclasses import fields
 import asyncio
+import sys
+from socket import inet_aton
 from pprint import pprint
 
 async def get_etg1510_whole_data(etg1510: ETG1510Profile):
