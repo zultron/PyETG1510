@@ -31,6 +31,6 @@ style = "pep440"
 line-length = 119
 
 [tool.poe.tasks]
-readme.shell = "cat docs/source/README.md README.md | sed -r 's/\\!\\[(.+?)\\]\\(([^\\s\\)]+).*\\)/\\!\\[\\1\\]\\(docs\\/source\\/\\2\\)/g' > README.md"
+readme.shell = "cat docs/source/README.md | sed -r 's/\\!\\[(.+?)\\]\\(([^\\s\\)]+).*\\)/\\!\\[\\1\\]\\(docs\\/source\\/\\2\\)/g' > README.md"
 makedoc.shell = "sphinx-apidoc -f -o ./docs/source ./pyetg1510"
 makehtml.shell = "sphinx-build -M html docs/source/ docs/build/"
