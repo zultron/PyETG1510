@@ -185,7 +185,7 @@ $ python etg1510.py 192.168.2.254
             'ScanCommandRequest': '\x04\x06',
             'ScanCommandResponse': '',
             'ScanCommandStatus': 0}}
-{'0xf020': {'ConfiguredAddress': 1001, 'NumberofSlaves': 10}}
+{'0xf020': {'ConfiguredAddress': [1001, 1002, ..., 0], 'NumberofSlaves': 10}}
 {'0xf120': {'ACyclicFramesPerSecond': 0,
             'ACyclicLostFrames': 98826091,
             'CyclicFramesPerSecond': 0,
