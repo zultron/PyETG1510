@@ -15,7 +15,7 @@ class DetectModulesCommand(SdoDataBody):
 
 class ConfiguredAddressList(SdoDataBody):
     NumberofSlaves: SdoEntry = field(default_factory=lambda: SdoEntry[int](sub_index=0, value=0, format="B"))
-    ConfiguredAddress: SdoEntry = field(default_factory=lambda: SdoEntry[int](sub_index=1, value=0, format="H"))
+    ConfiguredAddress: SdoEntry = field(default_factory=lambda: SdoEntry[list](sub_index=1, value=[0] * 125, format="H"))
 
 
 class MasterDiagData(SdoDataBody):

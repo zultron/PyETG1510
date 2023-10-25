@@ -164,7 +164,7 @@ class ETG1510Profile:
 
     master_od: MasterODSpecification
     """収集したメインデバイスのオブジェクトディクショナリ"""
-    watch_index_list: List[int] = field(default=None)
+    watch_index_list: List[int] = None
     """イテレータで収集する際に、収集対象となるインデックスリストを指定する場合はそのリストを設定する。指定しない場合は全て返す"""
 
     def __post_init__(self):

@@ -36,25 +36,28 @@ from socket import inet_aton
 from pprint import pprint
 
 async def get_etg1510_whole_data(etg1510: ETG1510Profile):
-    # As first, getting SDO specification with SDO information service.
-    await etg1510.master_od.get_object_dictionary()
+    """Get whole sdo data one time"""
     # Getting sdo data by ETG.1510 profile generator.
     async for entry, data in etg1510:
         pprint({hex(entry): {f.name: getattr(data, f.name).value for f in fields(data)}})
 
-
-async def get_etg1510_data(etg1510: ETG1510Profile):
-    # As first, getting SDO specification with SDO information service.
-    await etg1510.master_od.get_object_dictionary()
+async def get_etg1510_data_frequently(etg1510: ETG1510Profile):
+    """Get selected sdo data cyclically"""
     # Getting sdo data by ETG.1510 profile generator.
     watch_list = list(etg1510.sdo_database.keys())
     # only diagnosis data
-    diag_list = list(filter(lambda x: 0xA000 <= x <= 0xAFFF, watch_list))
-    diag_list.append(0xF120)
+    etg1510.watch_index_list = list(filter(lambda x: 0xA000 <= x <= 0xAFFF, watch_list))
+    # Getting sdo data by ETG.1510 profile generator.
+    while True:
+        async for entry, data in etg1510:
+            pprint({hex(entry): {f.name: getattr(data, f.name).value for f in fields(data)}})
+        await asyncio.sleep(0.3)
 
-    for index in diag_list:
-        sdo = await etg1510.get_sdo(index)
-        pprint({hex(index): {f.name: getattr(sdo, f.name).value for f in fields(sdo)}})
+async def get_etg1510_data(etg1510: ETG1510Profile, index: int = 0xA000):
+    """Get specified index sdo data"""
+    # get SDO data of index default 0xA001.
+    sdo = await etg1510.get_sdo(index)
+    pprint({hex(index): {f.name: getattr(sdo, f.name).value for f in fields(sdo)}})
 
 
 # Press the green button in the gutter to run the script.
@@ -65,6 +68,7 @@ if __name__ == "__main__":
     SysLog.rotation_log_configuration(LoggingLevel.WARNING)
     SysLog.set_loglevel(LoggingLevel.WARNING)
 
+    # Get target ip address from command argument
     def is_valid_ip(addr):
         try:
             inet_aton(addr)
@@ -88,11 +92,17 @@ if __name__ == "__main__":
     master_config = MasterODSpecification(connection=connection)
     # ETG.1510 SDO update command generator
     etg1510 = ETG1510Profile(master_od=master_config)
-    # get sdo data on an asynchronous task.
-    asyncio.run(get_etg1510_data(etg1510))
+    # As first, getting SDO specification with SDO information service.
+    asyncio.run(etg1510.master_od.get_object_dictionary())
+    # get whole sdo data on an asynchronous task.
+    asyncio.run(get_etg1510_whole_data(etg1510))
+    # get sdo data index 0xa001
+    asyncio.run(get_etg1510_data(etg1510, 0xA001))
+    # get sdo data cyclically
+    asyncio.run(get_etg1510_data_frequently(etg1510))
 ```
 
-This sample would be worked as below.
+This sample would work as below. 
 
 ```bash
 $ python etg1510.py 192.168.2.254

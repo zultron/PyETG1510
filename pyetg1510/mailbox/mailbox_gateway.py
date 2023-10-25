@@ -375,6 +375,7 @@ class SDOCommandMessage(SDOMessage):
 
 
 class SDORequestInfoMessage(SDOMessage):
+    """Build SDO "Info Service Data" frame in SDO information Service Request command"""
     opcode: SdoInfoOpcode = field(default=SdoInfoOpcode.GET_OD_LIST_REQ, init=True)
     sdo_command_data: Structure = field(default=None, init=False)
 
