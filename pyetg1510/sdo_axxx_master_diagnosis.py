@@ -10,13 +10,18 @@ from pyetg1510.mailbox import SDORequest
 
 @dataclass
 class ALStatusCodeDef:
+    """Alarm definition member"""
     code: int
+    """Alarm code"""
     occurrence_timing: str
+    """Watch timing"""
     transition_state: str
+    """Transition of state machine"""
     reference: str
-
+    """Documentation for solution"""
 
 class ALStausCode(Enum):
+    """Definition of alarm status code"""
     NoError: ALStatusCodeDef = ALStatusCodeDef(
         code=0x0000, occurrence_timing="Any", transition_state="Current", reference="ETG.1000.6"
     )
@@ -225,10 +230,15 @@ class ALStatus(Enum):
 
 
 class LoopControl(Enum):
+    """Value of loop control of port X"""
     Auto: int = 0
+    """Port loop opens automatically when a physical link is established, and closes automatically when the physical link is lost"""
     AutoClose: int = 1
+    """Port loop closes when the physical link is lost, and opens when the physical link is established after explicit request from master"""
     Open: int = 2
+    """Port loop is always open, independently from the physical link state"""
     Close: int = 3
+    """Port loop is always closed, independently from the physical link state"""
 
     @classmethod
     def find(cls, value: int):
@@ -241,12 +251,24 @@ class LoopControl(Enum):
 
 @dataclass
 class PortStatus:
+    """Structure of link connection
+
+    use_to_communication=False, link_up=True:
+       Used for redundancy
+
+    use_to_communication=True, link_up=True:
+       Used for communication with other sub device
+
+    loop_control:
+       If not set to Auto, port would not be connected with next port (loop control)
+    """
     use_to_communication: bool
     link_up: bool
     loop_control: LoopControl
 
 
 class DiagnosisData(SdoDataBody):
+    """0xAxxx: Diagnosis data of ETG.1510"""
     NumberOfEntries: SdoEntry = field(default_factory=lambda: SdoEntry[int](sub_index=0, value=0, format="B"))
     ALStatus: SdoEntry = field(default_factory=lambda: SdoEntry[int](sub_index=1, value=0, format="H"))
     ALControl: SdoEntry = field(default_factory=lambda: SdoEntry[int](sub_index=2, value=0, format="H"))
@@ -274,6 +296,7 @@ class DiagnosisData(SdoDataBody):
 
     @property
     def port_status(self) -> List[PortStatus]:
+        """Ports status of sub device"""
         result = [
             PortStatus(
                 bool(self.LinkConnStatus.value & 1 << p),
@@ -283,6 +306,31 @@ class DiagnosisData(SdoDataBody):
             for p in range(0, 4)
         ]
         return result
+
+    @property
+    def al_status_code(self) -> ALStatus:
+        """Alarm status of sub device"""
+        return ALStausCode.get_al(self.ALStatusCode.value)
+
+    @property
+    def al_control(self) -> ALStatus:
+        """AL status: Main device control status of state machine"""
+        return ALStatus(0x0F & self.ALControl.value)
+
+    @property
+    def al_status(self) -> ALStatus:
+        """AL status: Sub device current status of state machine"""
+        return ALStatus(0x0F & self.ALStatus.value)
+
+    @property
+    def is_rejected(self) -> bool:
+        """AL Control status : Update rejected"""
+        return bool(self.ALControl.value & ALStatus.REJECTED.value)
+
+    @property
+    def is_updated(self) -> bool:
+        """AL Control status : Update successfully"""
+        return bool(self.ALControl.value & ALStatus.ALCODE_UPDATED.value)
 
 
 DiagnosisDataFormat = SdoMetadata(

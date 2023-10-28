@@ -51,6 +51,12 @@ async def get_etg1510_data_frequently(etg1510: ETG1510Profile):
     while True:
         async for entry, data in etg1510:
             pprint({hex(entry): {f.name: getattr(data, f.name).value for f in fields(data)}})
+            pprint({"PortStatus": data.port_status})
+            pprint({"ALStatusCode": data.al_status_code})
+            pprint({"ALControl": data.al_control})
+            pprint({"ALStatus": data.al_status})
+            pprint({"Is Rejected?": data.is_rejected})
+            pprint({"Is Updated?": data.is_updated})
         await asyncio.sleep(0.3)
 
 async def get_etg1510_data(etg1510: ETG1510Profile, index: int = 0xA000):
@@ -58,7 +64,12 @@ async def get_etg1510_data(etg1510: ETG1510Profile, index: int = 0xA000):
     # get SDO data of index default 0xA001.
     sdo = await etg1510.get_sdo(index)
     pprint({hex(index): {f.name: getattr(sdo, f.name).value for f in fields(sdo)}})
-
+    pprint({"PortStatus": sdo.port_status})
+    pprint({"ALStatusCode": sdo.al_status_code})
+    pprint({"ALControl": sdo.al_control})
+    pprint({"ALStatus": sdo.al_status})
+    pprint({"Is Rejected?": sdo.is_rejected})
+    pprint({"Is Updated?": sdo.is_updated})
 
 # Press the green button in the gutter to run the script.
 if __name__ == "__main__":
@@ -102,9 +113,9 @@ if __name__ == "__main__":
     asyncio.run(get_etg1510_data_frequently(etg1510))
 ```
 
-This sample would work as below. 
+This sample would work as below. These are part of output for whole entries.
 
-```bash
+``` json
 $ python etg1510.py 192.168.2.254
 {'0x1000': {'DeviceType': 0}}
 {'0x1008': {'DeviceName': 'TwinCAT EtherCAT Master'}}
@@ -193,5 +204,44 @@ $ python etg1510.py 192.168.2.254
             'MasterState': 0,
             'NumberOfEntries': 2}}
 {'0xf200': {'NumberOfEntries': 1, 'ResetDiagInfo': False}}
+```
 
+And especially diagnosis data part shows additional properties that are link status and status of state machine.
+
+``` json
+{'0xa001': {'ALControl': 8,
+            'ALStatus': 8,
+            'ALStatusCode': 0,
+            'AbnormalStateChangeCounter': 0,
+            'CyclicWCErrorCounter': 0,
+            'DisableAutomaticLinkControl': False,
+            'FixedAddressConnPort': [1001, 1003, 0, 0],
+            'FrameErrorCounterPort': [0, 0, 0, 0],
+            'LastProtocolError': 0,
+            'LinkConnStatus': 51,
+            'LinkControl': 240,
+            'NewDiagMessageAvailable': False,
+            'NumberOfEntries': 17,
+            'SlaveNotPresentCounter': 2}}
+Find value:0
+Find value:0
+Find value:3
+Find value:3
+{'PortStatus': [PortStatus(use_to_communication=True,
+                           link_up=True,
+                           loop_control=<LoopControl.Auto: 0>),
+                PortStatus(use_to_communication=True,
+                           link_up=True,
+                           loop_control=<LoopControl.Auto: 0>),
+                PortStatus(use_to_communication=False,
+                           link_up=False,
+                           loop_control=<LoopControl.Close: 3>),
+                PortStatus(use_to_communication=False,
+                           link_up=False,
+                           loop_control=<LoopControl.Close: 3>)]}
+{'ALStatusCode': <ALStausCode.NoError: ALStatusCodeDef(code=0, occurrence_timing='Any', transition_state='Current', reference='ETG.1000.6')>}
+{'ALControl': <ALStatus.OP: 8>}
+{'ALStatus': <ALStatus.OP: 8>}
+{'Is Rejected?': False}
+{'Is Updated?': False}
 ```
