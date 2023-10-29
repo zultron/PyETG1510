@@ -3,7 +3,7 @@
 """
 from dataclasses import field, dataclass
 from pyetg1510.mailbox.sdo_application_interface import SdoEntry, SdoMetadata, SdoDataBody
-from typing import List
+from typing import Union, List
 from enum import Enum
 from pyetg1510.mailbox import SDORequest
 
@@ -294,43 +294,60 @@ class DiagnosisData(SdoDataBody):
     )
 
     @property
-    def port_status(self) -> List[PortStatus]:
+    def port_status(self) -> Union[List[PortStatus], None]:
         """Ports status of sub device"""
-        result = [
-            PortStatus(
-                bool(self.LinkConnStatus.value & 1 << p),
-                bool(self.LinkConnStatus.value & 16 << p),
-                LoopControl.find((self.LinkControl.value & 3 << p * 2) >> p * 2),
-            )
-            for p in range(0, 4)
-        ]
-        return result
+        if self.LinkControl.enable and self.LinkConnStatus.enable:
+            result = [
+                PortStatus(
+                    bool(self.LinkConnStatus.value & 1 << p),
+                    bool(self.LinkConnStatus.value & 16 << p),
+                    LoopControl.find((self.LinkControl.value & 3 << p * 2) >> p * 2),
+                )
+                for p in range(0, 4)
+            ]
+            return result
+        else:
+            return None
 
     @property
-    def al_status_code(self) -> ALStatus:
+    def al_status_code(self) -> Union[ALStatus, None]:
         """Alarm status of sub device"""
-        return ALStausCode.get_al(self.ALStatusCode.value)
+        if self.ALStatusCode.enable:
+            return ALStausCode.get_al(self.ALStatusCode.value)
+        else:
+            return None
 
     @property
-    def al_control(self) -> ALStatus:
+    def al_control(self) -> Union[ALStatus, None]:
         """AL status: Main device control status of state machine"""
-        return ALStatus(0x0F & self.ALControl.value)
+        if self.ALStatus.enable:
+            return ALStatus(0x0F & self.ALControl.value)
+        else:
+            return None
 
     @property
-    def al_status(self) -> ALStatus:
+    def al_status(self) -> Union[ALStatus, None]:
         """AL status: Sub device current status of state machine"""
-        return ALStatus(0x0F & self.ALStatus.value)
+        if self.ALStatus.enable:
+            return ALStatus(0x0F & self.ALStatus.value)
+        else:
+            return None
 
     @property
-    def is_rejected(self) -> bool:
+    def is_rejected(self) -> Union[bool, None]:
         """AL Control status : Update rejected"""
-        return bool(self.ALControl.value & ALStatus.REJECTED.value)
+        if self.ALControl.enable:
+            return bool(self.ALControl.value & ALStatus.REJECTED.value)
+        else:
+            return None
 
     @property
-    def is_updated(self) -> bool:
+    def is_updated(self) -> Union[bool, None]:
         """AL Control status : Update successfully"""
-        return bool(self.ALControl.value & ALStatus.ALCODE_UPDATED.value)
-
+        if self.ALControl.enable:
+            return bool(self.ALControl.value & ALStatus.ALCODE_UPDATED.value)
+        else:
+            return None
 
 DiagnosisDataFormat = SdoMetadata(
     index=0xA000,

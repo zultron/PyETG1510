@@ -4,6 +4,7 @@
 from pyetg1510.mailbox.sdo_application_interface import SdoEntry, SdoDataBody, SdoMetadata
 from dataclasses import dataclass, field
 from pyetg1510.mailbox import SDORequest
+from typing import Union
 
 
 @dataclass
@@ -132,56 +133,89 @@ class ConfigurationData(SdoDataBody):
     )
 
     @property
-    def link_status(self) -> LinkStatus:
-        args = [bool(self.LinkStatus.value & 1 << i) for i in range(0, 8)]
-        return LinkStatus(*args)
+    def link_status(self) -> Union[LinkStatus, None]:
+        if self.LinkStatus.enable:
+            args = [bool(self.LinkStatus.value & 1 << i) for i in range(0, 8)]
+            return LinkStatus(*args)
+        else:
+            return None
 
     @property
-    def link_preset(self) -> LinkPreset:
-        args = [bool(self.LinkPreset.value & 1 << i) for i in range(0, 3)]
-        args.extend([bool(self.LinkPreset.value & 16 << i) for i in range(0, 3)])
-        return LinkPreset(*args)
+    def link_preset(self) -> Union[LinkPreset, None]:
+        if self.LinkPreset.enable:
+            args = [bool(self.LinkPreset.value & 1 << i) for i in range(0, 3)]
+            args.extend([bool(self.LinkPreset.value & 16 << i) for i in range(0, 3)])
+            return LinkPreset(*args)
+        else:
+            return None
 
     @property
-    def redundancy_adapter_port(self) -> int:
+    def redundancy_adapter_port(self) -> Union[int, None]:
         """Specified port is connected to secondary master adapter for redundancy purposes.
         zero is not used.
         """
-        return self.Flags.value & 0x3
+        if self.Flags.enable:
+            return self.Flags.value & 0x3
+        else:
+            return None
 
     @property
-    def hot_connect_head_terminal(self) -> bool:
+    def hot_connect_head_terminal(self) -> Union[bool, None]:
         """This terminal is head terminal of hot connect group"""
-        return bool(self.Flags.value & 0x4)
+        if self.Flags.enable:
+            return bool(self.Flags.value & 0x4)
+        else:
+            return None
 
     @property
-    def hot_connect(self) -> bool:
+    def hot_connect(self) -> Union[bool, None]:
         """This terminal belong to hot connect group"""
-        return bool(self.Flags.value & 0x8)
+        if self.Flags.enable:
+            return bool(self.Flags.value & 0x8)
+        else:
+            return None
 
     @property
-    def aoe_supported(self) -> bool:
-        return bool(self.MailboxProtocolsSupported.value & 1)
+    def aoe_supported(self) -> Union[bool, None]:
+        if self.MailboxProtocolsSupported.enable:
+            return bool(self.MailboxProtocolsSupported.value & 1)
+        else:
+            return None
 
     @property
-    def eoe_supported(self) -> bool:
-        return bool(self.MailboxProtocolsSupported.value & 2)
+    def eoe_supported(self) -> Union[bool, None]:
+        if self.MailboxProtocolsSupported.enable:
+            return bool(self.MailboxProtocolsSupported.value & 2)
+        else:
+            return None
 
     @property
-    def coe_supported(self) -> bool:
-        return bool(self.MailboxProtocolsSupported.value & 4)
+    def coe_supported(self) -> Union[bool, None]:
+        if self.MailboxProtocolsSupported.enable:
+            return bool(self.MailboxProtocolsSupported.value & 4)
+        else:
+            return None
 
     @property
-    def foe_supported(self) -> bool:
-        return bool(self.MailboxProtocolsSupported.value & 8)
+    def foe_supported(self) -> Union[bool, None]:
+        if self.MailboxProtocolsSupported.enable:
+            return bool(self.MailboxProtocolsSupported.value & 8)
+        else:
+            return None
 
     @property
-    def soe_supported(self) -> bool:
-        return bool(self.MailboxProtocolsSupported.value & 16)
+    def soe_supported(self) -> Union[bool, None]:
+        if self.MailboxProtocolsSupported.enable:
+            return bool(self.MailboxProtocolsSupported.value & 16)
+        else:
+            return None
 
     @property
-    def voe_supported(self) -> bool:
-        return bool(self.MailboxProtocolsSupported.value & 32)
+    def voe_supported(self) -> Union[bool, None]:
+        if self.MailboxProtocolsSupported.enable:
+            return bool(self.MailboxProtocolsSupported.value & 32)
+        else:
+            return None
 
 
 ConfigurationDataFormat = SdoMetadata(

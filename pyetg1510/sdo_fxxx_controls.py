@@ -4,6 +4,7 @@
 from pyetg1510.mailbox.sdo_application_interface import SdoEntry, SdoMetadata, SdoDataBody
 from dataclasses import field
 from pyetg1510.mailbox import SDORequest
+from typing import Union
 
 
 class DetectModulesCommand(SdoDataBody):
@@ -18,7 +19,7 @@ class ConfiguredAddressList(SdoDataBody):
     ConfiguredAddress: SdoEntry = field(default_factory=lambda: SdoEntry[list](sub_index=1, value=[0] * 125, format="H"))
 
     @property
-    def address_list(self) -> list:
+    def address_list(self) -> Union[list, None]:
         if self.ConfiguredAddress.enable:
             return self.ConfiguredAddress.value[:self.NumberofSlaves.value]
         else:
