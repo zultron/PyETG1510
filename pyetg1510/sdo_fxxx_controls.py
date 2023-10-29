@@ -17,6 +17,13 @@ class ConfiguredAddressList(SdoDataBody):
     NumberofSlaves: SdoEntry = field(default_factory=lambda: SdoEntry[int](sub_index=0, value=0, format="B"))
     ConfiguredAddress: SdoEntry = field(default_factory=lambda: SdoEntry[list](sub_index=1, value=[0] * 125, format="H"))
 
+    @property
+    def address_list(self) -> list:
+        if self.ConfiguredAddress.enable:
+            return self.ConfiguredAddress.value[:self.NumberofSlaves.value]
+        else:
+            return None
+
 
 class MasterDiagData(SdoDataBody):
     NumberOfEntries: SdoEntry = field(default_factory=lambda: SdoEntry[int](sub_index=0, value=0, format="B"))
