@@ -223,10 +223,6 @@ And especially diagnosis data part shows additional properties that are link sta
             'NewDiagMessageAvailable': False,
             'NumberOfEntries': 17,
             'SlaveNotPresentCounter': 2}}
-Find value:0
-Find value:0
-Find value:3
-Find value:3
 {'PortStatus': [PortStatus(use_to_communication=True,
                            link_up=True,
                            loop_control=<LoopControl.Auto: 0>),

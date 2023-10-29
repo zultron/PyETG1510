@@ -242,7 +242,6 @@ class LoopControl(Enum):
 
     @classmethod
     def find(cls, value: int):
-        print(f"Find value:{value}")
         for e in LoopControl:
             if e.value == value:
                 return e
