@@ -123,7 +123,8 @@ class SDORequest(Structure):
         ("CommandSpecifier", c_uint8, 3),  # 'B' -> int
         ("Index", c_uint16, 16),  # 'H' -> int
         ("SubIndex", c_uint8, 8),  # 'B' -> int
-        ("Reserved2", c_uint32, 32),  # 'H' -> int
+        # This seems to make the mailbox entry too long
+        # ("Reserved2", c_uint32, 32),  # 'H' -> int
     ]
 
 
@@ -169,7 +170,7 @@ class SDOMessage:
     sdo_service: SdoService = field(default_factory=SdoService, init=True)
     station_address: int = field(default=0x0000, init=True)  # Default: Master
     mailbox_type: int = field(default=0x03, init=True)  # Default: CoE
-    session_counter: int = field(default=1, init=False)
+    session_counter: int = field(default=0, init=False)
     index: int = field(default_factory=int, init=False)
     sub_index: int = field(default_factory=int, init=False)
     complete_access: bool = field(default_factory=bool, init=False)
@@ -232,8 +233,9 @@ class SDOMessage:
         self.mailbox_header.Type = self.mailbox_type
 
         # Mailbox Header message parameter set
-        if self.session_counter > 7 or self.session_counter <= 0:
-            raise ValueError(f"session_counter must be within 1-7. Set to {self.session_counter}")
+        if self.session_counter > 7 or self.session_counter < 0:
+            raise ValueError(
+                f"session_counter={self.session_counter} outside 0-7 range.")
 
         if increase_session:
             if self.session_counter >= 7 or self.session_counter <= 0:
@@ -367,7 +369,8 @@ class SDOCommandMessage(SDOMessage):
             f"Request Body: {self.sdo_command_data.__class__.__name__}, Index:{hex(self.index)}, Subindex:{hex(self.sub_index)} specified."
         )
 
-        _bitarray = self.make_coe_header(len(sdo_bitarray))
+        _bitarray = self.make_coe_header(
+            len(sdo_bitarray), increase_session=increase_session)
         _bitarray.extend(sdo_bitarray)
 
         # convert bitarray with bytes data and return
@@ -409,7 +412,8 @@ class SDORequestInfoMessage(SDOMessage):
         if self.sdo_command_data is not None:
             sdo_bitarray.extend(self.get_bytes(self.sdo_command_data))
 
-        _bitarray = self.make_coe_header(len(sdo_bitarray))
+        _bitarray = self.make_coe_header(
+            len(sdo_bitarray), increase_session=increase_session)
         _bitarray.extend(sdo_bitarray)
 
         # convert bitarray with bytes data and return

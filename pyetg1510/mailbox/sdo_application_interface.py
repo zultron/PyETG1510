@@ -243,6 +243,8 @@ class SdoMetadata:
     response_container: SdoDataBody.__class__
     """Define a container class with SdoDataBody as a base class to store the
     response data of the upload command."""
+    info_opcode: SdoInfoOpcode = None
+    """For SDO info commands only, set opcode value from SdoInfoOpcode enum."""
 
 
 @dataclass
@@ -304,6 +306,7 @@ ODListFormat = SdoMetadata(
     max_sub_index=0,
     request_container=SDOInformationODListRequest,
     response_container=ODList,
+    info_opcode=SdoInfoOpcode.GET_OD_LIST_REQ,
 )
 
 
@@ -323,6 +326,7 @@ SDOInfoDescriptionFormat = SdoMetadata(
     max_sub_index=0,
     request_container=SDOInformationDescriptionRequest,
     response_container=SDOInfoDescription,
+    info_opcode=SdoInfoOpcode.GET_DESCRIPTION_REQ,
 )
 
 
@@ -346,6 +350,7 @@ SDOInfoEntryFormat = SdoMetadata(
     max_sub_index=0,
     request_container=SDOInformationEntryRequest,
     response_container=SDOInfoEntry,
+    info_opcode=SdoInfoOpcode.GET_ENTRY_REQ,
 )
 
 
@@ -360,6 +365,7 @@ SDOInfoErrorFormat = SdoMetadata(
     max_sub_index=0,
     request_container=None,
     response_container=SDOInfoError,
+    info_opcode=None,
 )
 
 
@@ -376,6 +382,7 @@ class SdoDataController:
     session: EtherCATMasterConnection
     sdo_data: SdoDataBody = field(default=None)
     get_info: bool = field(default=False)
+    increase_session: bool = field(default=True)
 
     def __post_init__(self):
         self.data_body_size: int = 0
@@ -470,40 +477,45 @@ class SdoDataController:
 
             k += 1
 
-    def _object_initialization(self, sdo_metadata: SdoMetadata):
-        """リクエスト、レスポンス各メッセージコンテナを初期化する。"""
-
-        if self.get_info:
-            self.response_message = SDOResponseMessage(sdo_service=SdoService.INFO)
-            self.request_message = SDORequestInfoMessage(sdo_service=SdoService.INFO)
-            if sdo_metadata == ODListFormat:
-                logger.info("Fetching OD List")
-                self.request_message.opcode = SdoInfoOpcode.GET_OD_LIST_REQ
-            elif sdo_metadata == SDOInfoDescriptionFormat:
-                logger.info("Fetching Object Description")
-                self.request_message.opcode = SdoInfoOpcode.GET_DESCRIPTION_REQ
-            elif sdo_metadata == SDOInfoEntryFormat:
-                logger.info("Fetching Entry Description")
-                self.request_message.opcode = SdoInfoOpcode.GET_ENTRY_REQ
+    def init_messages(self, sdo_metadata: SdoMetadata, address: int):
+        """リクエスト、レスポンス各メッセージコンテナを初期化する。
+        Initialize request and response containers."""
+        if sdo_metadata.info_opcode is not None:
+            self.response_message = SDOResponseMessage(
+                sdo_service=SdoService.INFO)
+            self.request_message = SDORequestInfoMessage(
+                sdo_service=SdoService.INFO)
+            self.request_message.opcode = sdo_metadata.info_opcode
+            req_name = sdo_metadata.info_opcode.name[4:-4]  # GET_XXX_REQ -> XXX
+            logger.info(f"Fetching {req_name}")
         else:
-            self.response_message = SDOResponseMessage(sdo_service=SdoService.RESPONSE)
-            self.request_message = SDOCommandMessage(sdo_service=SdoService.REQUEST)
-
+            self.response_message = SDOResponseMessage(
+                sdo_service=SdoService.RESPONSE)
+            self.request_message = SDOCommandMessage(
+                sdo_service=SdoService.REQUEST)
+            logger.info("Fetching SDO")
         self.request_message.sdo_command_data = sdo_metadata.request_container()
+        self.request_message.index = sdo_metadata.index
+        self.request_message.sub_index = sdo_metadata.sub_index
+        self.request_message.complete_access = sdo_metadata.support_complete_access
+        self.request_message.station_address = address
 
-    async def fetch(self, sdo_metadata: SdoMetadata, sdo_data: SdoDataBody):
+    async def fetch(
+        self,
+        sdo_metadata: SdoMetadata,
+        sdo_data: SdoDataBody,
+        address: int = 0,
+    ):
         """Issue an SDO Upload request and map to the SdoDataBody model
 
         Args:
             sdo_metadata(SdoMetaData): SDO Metadata
                :obj:`<pyetg1510.mailbox.sdo_data_factory.SdoMetadata>`
             sdo_data(SdoDataBody): Container object that stores received SDO data
+            address:  Station address (default master)
         """
         self.sdo_data = sdo_data
-        self._object_initialization(sdo_metadata=sdo_metadata)
-        self.request_message.index = sdo_metadata.index
-        self.request_message.sub_index = sdo_metadata.sub_index
-        self.request_message.complete_access = sdo_metadata.support_complete_access
+        self.init_messages(sdo_metadata, address=address)
 
         logger.debug(
             f"Command to be requested index:{self.request_message.index},"
@@ -512,7 +524,9 @@ class SdoDataController:
         )
         # request and wait response
 
-        await self.session.send_data(self.request_message.make_request_frame())
+        request_message = self.request_message.make_request_frame(
+            increase_session=self.increase_session)
+        await self.session.send_data(request_message)
         # parse until CoE header message
         self.response_message.parse_response_frame(self.session.received_data)
 
@@ -555,7 +569,7 @@ class SdoDataController:
 
         # Mapping SDO data body to native model
         # try:
-        logger.debug(f"SDO Body message {data_body[data_body_offset:]}")
+        logger.debug(f"SDO Body message {data_body[data_body_offset:].hex()}")
         self._map(raw_data=data_body[data_body_offset:])
         logger.debug(f"mapped data: {self.sdo_data}")
         # except (ValueError, TypeError, TimeoutError,
