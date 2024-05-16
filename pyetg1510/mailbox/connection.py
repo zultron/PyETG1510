@@ -1,4 +1,4 @@
-"""UDP/IP非同期通信モジュール
+"""UDP/IP asynchronous communication module
 """
 import asyncio
 from dataclasses import dataclass, field
@@ -43,7 +43,8 @@ class EtherCATMasterConnection:
         on_con_lost = loop.create_future()
         messages = Messages(message)
         transport, protocol = await loop.create_datagram_endpoint(
-            lambda: UDPClientConnection(messages, on_con_lost), remote_addr=(self.host, self.port)
+            lambda: UDPClientConnection(messages, on_con_lost),
+            remote_addr=(self.host, self.port)
         )
         try:
             await asyncio.wait_for(on_con_lost, 3)

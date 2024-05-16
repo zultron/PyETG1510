@@ -1,4 +1,4 @@
-"""Mailbox Gateway 通信フレーム制御モジュール
+"""Mailbox Gateway communication frame control module
 
 """
 import sys

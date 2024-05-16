@@ -1,5 +1,5 @@
 """
-SDOデータ生成モジュール
+SDO data generation module
 """
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, asdict, field
@@ -8,8 +8,8 @@ from typing import Dict, Generic, TypeVar, Tuple
 from struct import calcsize, unpack_from, unpack, error
 from ctypes import Structure
 from pyetg1510.helper import SysLog
-from pyetg1510.mailbox import (
-    EtherCATMasterConnection,
+from .connection import EtherCATMasterConnection
+from .mailbox_gateway import (
     SDOInformationODListRequest,
     SDOInformationEntryRequest,
     SDOInformationDescriptionRequest,
@@ -28,7 +28,7 @@ is_primitive = lambda x: isinstance(x, (int, float, bool, str))
 
 @dataclass
 class AbstructSdoDataBody(metaclass=ABCMeta):
-    """SDODataBody インターフェース"""
+    """SDODataBody interface"""
 
     def __new__(cls, *args, **kwargs):
         dataclass(cls)
@@ -48,16 +48,20 @@ class AbstructSdoDataBody(metaclass=ABCMeta):
 
 
 class SDODataFactory(metaclass=ABCMeta):
-    """SDO Data Factory 抽象クラス"""
+    """SDO Data Factory Abstract Class"""
 
     def create(self, index: int, template: AbstructSdoDataBody.__class__):
-        """SDO data 生成メソッド
-        SDODataBodyオブジェクトを生成してインデックスに対応する辞書へ登録する抽象クラス
+        """SDO data generation method
 
-        Args:
-            index(int): SDOインデックス
-            template(AbstructSdoDataBody.__class__): :obj:`SDOメタデータ <pyetg1510.mailbox.sdo_data_factory.SdoMetadata>` に定義された
-              :obj:`response_container <pyetg1510.mailbox.sdo_data_factory.SdoMetadata.response_container>` に定義したテンプレートクラス
+         Abstract class that generates a `SDODataBody` object and registers it
+         in the dictionary corresponding to the index
+
+         Args:
+             index(int): SDO index
+             template(AbstructSdoDataBody.__class__): defined in
+               :obj:`<pyetg1510.mailbox.sdo_data_factory.SdoMetadata>` defined
+               in response_container Template class
+               :obj:`<pyetg1510.mailbox.sdo_data_factory.SdoMetadata.response_container>`
         """
         p = self.createProduct(template)
         self.registerProduct(index, p)
@@ -74,58 +78,61 @@ class SDODataFactory(metaclass=ABCMeta):
 
 @dataclass
 class ConcreteSDODataFactory(SDODataFactory):
-    """SDO Data Factory 具象クラス"""
+    """SDO Data Factory concrete class"""
 
     entries: Dict[int, AbstructSdoDataBody] = field(default_factory=dict, init=False)
-    """オブジェクトディクショナリ
+    """object dictionary
         
     Args:
-        (int): SDOインデックス
-        (SdoDataBody): SDOデータオブジェクト
+        (int): SDO index
+        (SdoDataBody): SDO data object
     """
 
     def createProduct(self, template: AbstructSdoDataBody.__class__):
-        """テンプレートクラスからインスタンスを作成
+        """Create instance from template class
 
         Args:
-            template(class): テンプレートクラス
+            template(class): template class
 
         Return:
-            SDODataBody: 生成したインスタンス
+            SDODataBody: Generated instance
         """
         return template()
 
     def registerProduct(self, index: int, product: AbstructSdoDataBody):
-        """インデックス毎のSDODataBodyオブジェクトが格納された辞書に登録"""
+        """Register SDODataBody objects for each index"""
         self.entries[index] = product
 
 
 @dataclass
 class SdoEntry(Generic[T]):
-    """SDOデータコンテナ
+    """SDO data container
 
-    ジェネリクス型変数を持つため、インスタンス定義時には型を指定すること。
+    Since it has a generic type variable, the type must be specified when
+    defining an instance.
     """
 
     name: str = field(default_factory=str, init=False)
-    """SDO Entry名"""
+    """SDO Entry name"""
     sub_index: int
-    """SDO サブインデックス"""
+    """SDO sub index"""
     value: T
-    """SDO 値"""
+    """SDO value"""
     format: str
     """
-    struct.unpackで指定するformatの文字列
+    struct.unpack format specification string
     
     https://docs.python.org/ja/3/library/struct.html#format-characters
     """
     size: int = field(default=None, init=True)
-    """データサイズ（Byte）データ型により指定するべきサイズの意味が異なる。
+    """Data size (Byte)
 
-    プリミティブ型:
+    The meaning of the size to be specified differs depending on the data type.
+
+    primitive type::
         :mod:`format` で指定したサイズ。例えば5つの連続した32bit整数であればformatには ``5I`` と指定され、サイズは5 x 4 = 20byteが得られる。
-    コレクション型:
-        要素数 * :mod:`format` で指定したサイズ
+    collection type:
+        Element count * :mod:`format` size specifier
     """
     enable: bool = field(default=False, init=True)
     """Enabled flag by SDO information service"""
@@ -140,25 +147,26 @@ class SdoEntry(Generic[T]):
 
 @dataclass
 class SdoDataBody(AbstructSdoDataBody):
-    """SDODataBody実装クラス
+    """SDODataBody implementation class
 
     Raises:
-        TypeError: SdoEntry以外のメンバを登録した場合に発生
-
+        TypeError:  Occurs when registering a member other than SdoEntry
     """
 
     def __post_init__(self):
         for each_field in self.__annotations__.items():
             if not issubclass(each_field[1], SdoEntry):
                 raise TypeError(
-                    f"Can't define as field except 'SdoDataBody'. Actual {each_field[0]} : {each_field[1]}"
+                    "Can't define as field except 'SdoDataBody'."
+                    f" Actual {each_field[0]} : {each_field[1]}"
                 )
         # self.sub_index_dic = {asdict(self)[k]['sub_index']: k for k in asdict(self)}
 
     @property
     def unpack_format(self) -> str:
-        """struct.unpack の formatを生成する"""
-        # dataの要素のサイズがフォーマットの規定サイズより大きければ規定サイズ個数を頭に付け、そうでなければ
+        """Generate format for struct.unpack"""
+        # If the size of the element of data is larger than the specified size
+        # of the format, add the specified size number to the beginning
         result = "="
         for field in dataclasses.fields(self):
             entry = getattr(self, field.name)
@@ -177,7 +185,8 @@ class SdoDataBody(AbstructSdoDataBody):
                 # for iterable object entry
                 temp += str(int(entry.size / format_size)) + entry.format
                 logger.debug(
-                    f"{entry.value} : is NOT primitive. size :{entry.size}, format size: {format_size}, format: {temp}"
+                    f"{entry.value} : is NOT primitive. size :{entry.size},"
+                    f" format size: {format_size}, format: {temp}"
                 )
             else:
                 temp += entry.format
@@ -218,34 +227,36 @@ class SdoDataBody(AbstructSdoDataBody):
 
 @dataclass
 class SdoMetadata:
-    """SDOメタデータ"""
+    """SDO metadata"""
 
     index: int
-    """インデックス番号"""
+    """index number"""
     sub_index: int
-    """サブインデックス番号"""
+    """sub index number"""
     support_complete_access: bool
-    """complete access可能エントリ"""
+    """complete access possible entry"""
     max_sub_index: int
-    """最大サブインデックス番号"""
+    """Maximum subindex number"""
     request_container: Structure.__class__
-    """アップロードコマンドのリクエストデータを格納するctype.Structureを基底クラスとしたコンテナクラスを定義"""
+    """Define a container class with ctype.Structure as the base class to store the
+    request data of the upload command."""
     response_container: SdoDataBody.__class__
-    """アップロードコマンドのレスポンスデータを格納するSdoDataBodyを基底クラスとしたコンテナクラスを定義"""
+    """Define a container class with SdoDataBody as a base class to store the
+    response data of the upload command."""
 
 
 @dataclass
 class MappingMember:
-    """ODマッピング定義オブジェクト"""
+    """OD mapping definition object"""
 
     index_range: Tuple[int, int]
-    """ODのインデックス範囲"""
+    """OD index range"""
     metadata: SdoMetadata
-    """ :obj:`SDOメタデータ <pyetg1510.mailbox.sdo_data_factory.SdoMetadata>` """
+    """ SDO metadata :obj:`<pyetg1510.mailbox.sdo_data_factory.SdoMetadata>` """
 
 
 class SdoMetadataMapper:
-    """SDOデータマッピングクラス"""
+    """SDO data mapping class"""
 
     def __post_init__(self):
         """メンバにMappingMember以外のデータが含まれていたらValueErrorとする"""
@@ -257,14 +268,13 @@ class SdoMetadataMapper:
 
     @classmethod
     def find(cls, index: int) -> MappingMember:
-        """指定したインデックスに応じたODマッピング定義オブジェクトを返す
+        """Returns the OD mapping definition object according to the specified index
 
-        Args:
-            index(int): SDOインデックス番号
+         Args:
+             index(int): SDO index number
 
-        Return:
-            MappingMember: ODマッピング定義オブジェクト
-
+         Return:
+             MappingMember: OD mapping definition object
         """
         for field in vars(cls):
             if isinstance(vars(cls)[field], MappingMember):
@@ -279,10 +289,11 @@ class SdoMetadataMapper:
 
 
 class ODList(SdoDataBody):
-    """ODリストのメンバー"""
-    ListType: SdoEntry = field(default_factory=lambda: SdoEntry[int](sub_index=0, value=0, format="H", enable=True))
+    """OD list members"""
+    ListType: SdoEntry = field(
+        default_factory=lambda: SdoEntry[int](sub_index=0, value=0, format="H", enable=True))
     ObjectIndex: SdoEntry = field(
-        default_factory=lambda: SdoEntry[list[int]](sub_index=0, value=[0], format="H", enable=True)
+        default_factory=lambda: SdoEntry(sub_index=0, value=[0], format="H", enable=True)
     )
 
 
@@ -297,7 +308,7 @@ ODListFormat = SdoMetadata(
 
 
 class SDOInfoDescription(SdoDataBody):
-    """個々のSDO Indexの詳細情報"""
+    """Detailed information for individual SDO Index"""
     Index: SdoEntry = field(default_factory=lambda: SdoEntry[int](sub_index=0, value=0, format="H", enable=True))
     DataType: SdoEntry = field(default_factory=lambda: SdoEntry[int](sub_index=0, value=0, format="H", enable=True))
     MaxSubindex: SdoEntry = field(default_factory=lambda: SdoEntry[int](sub_index=0, value=0, format="B", enable=True))
@@ -316,7 +327,7 @@ SDOInfoDescriptionFormat = SdoMetadata(
 
 
 class SDOInfoEntry(SdoDataBody):
-    """SDOエントリ情報"""
+    """Detailed information for individual SDO Index"""
     Index: SdoEntry = field(default_factory=lambda: SdoEntry[int](sub_index=0, value=0, format="H", enable=True))
     Subindex: SdoEntry = field(default_factory=lambda: SdoEntry[int](sub_index=0, value=0, format="B", enable=True))
     ValueInfo: SdoEntry = field(default_factory=lambda: SdoEntry[int](sub_index=0, value=0, format="B", enable=True))
@@ -354,11 +365,11 @@ SDOInfoErrorFormat = SdoMetadata(
 
 @dataclass
 class SdoDataController:
-    """SDO メッセージサービス
+    """SDO message service
 
     Args:
-        session(EtherCATMasterConnection): 通信コネクタオブジェクト
-        get_info(bool): SDO Information serviceの問い合わせ時はTrueにする
+        session(EtherCATMasterConnection): communication connector object
+        get_info(bool): Set `True` to query SDO Information service
     """
 
     session: EtherCATMasterConnection
@@ -370,21 +381,26 @@ class SdoDataController:
         self.index_counter: int = 0
 
     def _map(self, raw_data: bytes):
-        """SDOデータ本体部分の内部モデルへのマッピング関数
+        """Map SDO data body part to internal model
 
-        Unpack received data and put there on each member of 'values' array at the 'SdoFormat' instance as a 'SdoEntry' data type.
-        受信したバイトデータをアンパックし、 :meth:`get_object_dictionary <pyetg1510.etg_1510.MasterODSpecification.get_object_dictionary>` で作成したSdoFormat
+        Unpack the received byte data and create SdoFormat with
+        :meth:`get_object_dictionary
+        <pyetg1510.etg_1510.MasterODSpecification.get_object_dictionary>`
 
         Args:
-            raw_data(bytes): Upload commandで受信したレスポンスデータのデータ本体部分
-            self.sdo_data(SdoDataBody): マッピング先のデータコンテナ
+            raw_data(bytes): Data body part of response data received by Upload command
+            self.sdo_data(SdoDataBody): Data container to map to
         Raises:
-            TypeError: struct.unpackにおけるformat指定が不正な場合、または、サイズが合わない場合。
-            struct.error: struct.unpack 処理が失敗した場合。
+            TypeError: If the format specification in struct.unpack is invalid
+                or the size does not match
+            struct.error: If struct.unpack processing fails
         """
         logger.info(self.sdo_data)
         logger.info(
-            f"Before adjusting size, Unpack format:{self.sdo_data.unpack_format}, format size:{calcsize(self.sdo_data.unpack_format)}, Setting size: {self.sdo_data.total_size}, Actual size: {len(raw_data)}"
+            f"Before adjusting size, Unpack format:{self.sdo_data.unpack_format},"
+            f" format size:{calcsize(self.sdo_data.unpack_format)},"
+            f" Setting size: {self.sdo_data.total_size},"
+            f" Actual size: {len(raw_data)}"
         )
         if self.sdo_data.total_size < len(raw_data):
             lastkey = next(reversed(asdict(self.sdo_data)), None)
@@ -394,10 +410,13 @@ class SdoDataController:
         unpack_format = self.sdo_data.unpack_format
         format_size = calcsize(unpack_format)
         if format_size <= 0:
-            raise ValueError(f"All member are disabled. ({unpack_format}) Nothing to fetch data.")
+            raise ValueError("All member are disabled."
+                             f" ({unpack_format}) Nothing to fetch data.")
 
         logger.info(
-            f"Unpack format: {unpack_format}, Unpack size: {format_size}, Calculated size: {self.sdo_data.total_size},raw bytes data size : {len(raw_data)}"
+            f"Unpack format: {unpack_format}, Unpack size: {format_size},"
+            f"Calculated size: {self.sdo_data.total_size},"
+            f" raw bytes data size : {len(raw_data)}"
         )
         if len(raw_data) < format_size:
             logger.error(f"Data: {raw_data}, Unpack format: {unpack_format}")
@@ -407,20 +426,24 @@ class SdoDataController:
             _data = list(unpack(unpack_format, raw_data))
         except error as e:
             logger.exception(
-                f"""unpack error: unpack format size: {calcsize(unpack_format)}, data size: {len(raw_data)}
-    Specified datamodel: {self.sdo_data}
-            """
+                f"unpack error: unpack format size: {calcsize(unpack_format)},"
+                f"data size: {len(raw_data)}\n"
+                f"    Specified datamodel: {self.sdo_data}\n"
             )
 
             raise
         _data = [f.strip(b"\0").decode() if type(f) is bytes else f for f in _data]
         sdo_data_dict = asdict(self.sdo_data)
-        sdo_data_dict = {k: sdo_data_dict[k] for k in sdo_data_dict if sdo_data_dict[k]["enable"]}
+        sdo_data_dict = {k: sdo_data_dict[k]
+                         for k in sdo_data_dict
+                         if sdo_data_dict[k]["enable"]}
         if len(sdo_data_dict) > len(_data):
             raise ValueError(
-                f"""Mismatching configured SDO data number and received data.
-    Received data: count: {len(_data)}, unpack format {unpack_format}, Unpack data: {_data}
-    Configured model: count: {len(sdo_data_dict)}, model:{sdo_data_dict}"""
+                f"Mismatching configured SDO data number and received data.\n"
+                f"    Received data: count: {len(_data)},"
+                f" unpack format {unpack_format}, Unpack data: {_data}\n"
+                f"    Configured model: count: {len(sdo_data_dict)},"
+                f" model:{sdo_data_dict}"
             )
         k = 0
         i = 0
@@ -432,7 +455,8 @@ class SdoDataController:
                 i += 1
             elif type(getattr(self.sdo_data, key).value) is type(_data):
                 byte_size = getattr(self.sdo_data, key).size
-                list_size = int(byte_size / calcsize(getattr(self.sdo_data, key).format))
+                list_size = int(byte_size /
+                                calcsize(getattr(self.sdo_data, key).format))
                 set_list = _data[i : i + list_size]
                 value = getattr(self.sdo_data, key)
                 value.value = set_list
@@ -467,11 +491,12 @@ class SdoDataController:
         self.request_message.sdo_command_data = sdo_metadata.request_container()
 
     async def fetch(self, sdo_metadata: SdoMetadata, sdo_data: SdoDataBody):
-        """SDO Upload リクエストを発行し、SdoDataBodyモデルへマッピングする
+        """Issue an SDO Upload request and map to the SdoDataBody model
 
         Args:
-            sdo_metadata(SdoMetaData): :obj:`SDOメタデータ <pyetg1510.mailbox.sdo_data_factory.SdoMetadata>`
-            sdo_data(SdoDataBody): 受信したSDOデータを格納するコンテナオブジェクト
+            sdo_metadata(SdoMetaData): SDO Metadata
+               :obj:`<pyetg1510.mailbox.sdo_data_factory.SdoMetadata>`
+            sdo_data(SdoDataBody): Container object that stores received SDO data
         """
         self.sdo_data = sdo_data
         self._object_initialization(sdo_metadata=sdo_metadata)
@@ -480,7 +505,9 @@ class SdoDataController:
         self.request_message.complete_access = sdo_metadata.support_complete_access
 
         logger.debug(
-            f"Command to be requested index:{self.request_message.index}, subindex: {self.request_message.sub_index}, complete access: {self.request_message.complete_access}"
+            f"Command to be requested index:{self.request_message.index},"
+            f"subindex: {self.request_message.sub_index},"
+            f"complete access: {self.request_message.complete_access}"
         )
         # request and wait response
 
@@ -489,48 +516,56 @@ class SdoDataController:
         self.response_message.parse_response_frame(self.session.received_data)
 
         # Parse SDO message
-        # 1. Make sure data size either specified size or default size by SizeIndicator
-        # 2. If SizeIndicator is True and expedited bit is True, data size is specified at 2bit.
+        # 1. Make sure data size either specified size or default size by
+        #    SizeIndicator
+        # 2. If SizeIndicator is True and expedited bit is True, data size is
+        #    specified at 2bit.
         data_body_offset = 0
-        if (
-            "SizeIndicator" in [f[0] for f in self.response_message.sdo_header._fields_]
-            and self.response_message.sdo_header.SizeIndicator == 1
+        sdo_header = self.response_message.sdo_header
+        data_body = self.response_message.data_body
+        if ("SizeIndicator" in [f[0] for f in sdo_header._fields_]
+            and sdo_header.SizeIndicator == 1
         ):
-            if self.response_message.sdo_header.TransferType == 1:
+            if sdo_header.TransferType == 1:
                 # case : SDO upload expedited response]
-                self.data_body_size = 4 - self.response_message.sdo_header.DataSetSize
+                self.data_body_size = 4 - sdo_header.DataSetSize
                 logger.debug(
-                    f"Expedited : True, size specified: {self.response_message.sdo_header.DataSetSize}, Calculated size:{self.data_body_size}"
+                    "Expedited : True,"
+                    f"size specified: {sdo_header.DataSetSize},"
+                    f"Calculated size:{self.data_body_size}"
                 )
             else:
-                temp = unpack_from("@I", self.response_message.data_body, 0)
+                temp = unpack_from("@I", data_body, 0)
                 self.data_body_size = temp[0]
                 data_body_offset = 4
         else:
             self.data_body_size = 4
-        if len(self.response_message.data_body[data_body_offset:]) < self.data_body_size:
+        if len(data_body[data_body_offset:]) < self.data_body_size:
             logger.warning("!!!STOP!!! Size too low")
             self.index_counter = 0
             raise StopAsyncIteration()
         # SDO Information service checkking Opcode
         if self.get_info and (
-            "Opcode" in [f[0] for f in self.response_message.sdo_header._fields_]
-            and self.response_message.sdo_header.Opcode == SdoInfoOpcode.SDO_INFO_ERR_REQ.value
+            "Opcode" in [f[0] for f in sdo_header._fields_]
+            and sdo_header.Opcode == SdoInfoOpcode.SDO_INFO_ERR_REQ.value
         ):
             self.sdo_data = SDOInfoErrorFormat.response_container()
             sdo_metadata = SDOInfoErrorFormat
 
         # Mapping SDO data body to native model
         # try:
-        logger.debug(f"SDO Body message {self.response_message.data_body[data_body_offset:]}")
-        self._map(raw_data=self.response_message.data_body[data_body_offset:])
+        logger.debug(f"SDO Body message {data_body[data_body_offset:]}")
+        self._map(raw_data=data_body[data_body_offset:])
         logger.debug(f"mapped data: {self.sdo_data}")
-        # except (ValueError, TypeError, TimeoutError, asyncio.exceptions.CancelledError, asyncio.exceptions.InvalidStateError) as e:
+        # except (ValueError, TypeError, TimeoutError,
+        #         asyncio.exceptions.CancelledError,
+        #         asyncio.exceptions.InvalidStateError) as e:
         #    logger.warning(e)
         #    self.index_counter = 0
         #    raise StopAsyncIteration()
         logger.debug(
-            f"Sequence number: {hex(sdo_metadata.index)}:{hex(sdo_metadata.sub_index)} / {self.index_counter}"
+            f"Sequence number: {hex(sdo_metadata.index)}:"
+            f"{hex(sdo_metadata.sub_index)} / {self.index_counter}"
         )
         self.index_counter += 1
         # return copy.deepcopy(self.sdo_data)

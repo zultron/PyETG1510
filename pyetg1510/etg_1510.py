@@ -1,6 +1,7 @@
 """
+ETG.1510 data acquisition control module.
 
-ETG.1510データ収集制御モジュール。 ``sdo_*xxx_`` から始まるモジュールで定義されたメタデータを通じてデータモデルを参照。
+Reference the data model through metadata defined in modules starting with ``sdo_*xxx_``.
 """
 from dataclasses import dataclass, field, fields
 from pyetg1510.mailbox.connection import EtherCATMasterConnection
@@ -38,9 +39,13 @@ logger = SysLog.logger
 
 
 class MasterDiagnosisMetadataMapper(SdoMetadataMapper):
-    """定義された :obj:`メタデータ <pyetg1510.mailbox.sdo_data_factory.SdoMetadata>` とそのインデックス範囲を関連付けるクラス
+    """Class associating defined SDO metadata with its index range
 
-    ベースクラス :mod:`pyetg1510.mailbox.sdo_data_factory.SdoMetadataMapper.find` メソッドにより何れかのメンバーをセレクトすることができる。
+    Associates :obj:`metadata <pyetg1510.mailbox.sdo_data_factory.SdoMetadata>`
+    with index range.
+
+    You can select any member using the base class
+    :mod:`pyetg1510.mailbox.sdo_data_factory.SdoMetadataMapper.find` method.
     """
 
     device_type = MappingMember(index_range=(0x1000, 0x1000), metadata=DeviceTypeFormat)
@@ -59,17 +64,20 @@ class MasterDiagnosisMetadataMapper(SdoMetadataMapper):
 
 @dataclass
 class MasterODSpecification:
-    """SDO Information service [#f1]_  により、収集可能な、EtherCAT main device のサポートするSDO情報を管理するクラス。
+    """Manage SDO information supported by the EtherCAT main device.
+
+    Manage SDO information collected by the SDO Information service [#f1].
 
     .. [#f1] `ETG.1000.6 <https://www.ethercat.org/jp/downloads/downloads_A02E436C7A97479F9261FDFA8A6D71E5.htm>`_ Section 5.6.3
 
     Args:
-        connection(EtherCATMasterConnection): 通信コネクタオブジェクト
-
+        connection(EtherCATMasterConnection): Communication connector object
     """
 
     connection: EtherCATMasterConnection
-    sdo_data_entity: ConcreteSDODataFactory = field(default_factory=ConcreteSDODataFactory, init=False)
+    sdo_data_entity: ConcreteSDODataFactory = field(
+        default_factory=ConcreteSDODataFactory, init=False
+    )
 
     def __post_init__(self):
         self.data_handler = SdoDataController(session=self.connection, get_info=True)
@@ -77,37 +85,58 @@ class MasterODSpecification:
         self.current_subindex = 0
 
     async def get_object_dictionary(self):
-        """SDO Information serviceによりmain deviceのODを問い合わせ、その仕様をsdo_data_entryへ登録。
+        """Inquire about the OD of the main device.
 
-        次の手順で実行する。
+        Uses SDO Information service and register its specifications to
+        sdo_data_entry.
 
-        1. OD Listを収集し、 :obj:`メタデータマッパ <pyetg1510.etg_1510.MasterDiagnosisMetadataMapper>` を用いて
-           対応する :obj:`メタデータ <pyetg1510.mailbox.sdo_data_factory.SdoMetadata>` を取得
-        2. :mod:`ConcreteSDODataFactory` によりテンプレートを元に実体を作成し、sdo_data_entryに登録。
-        3. 個々のODのDescriptionを要求し、作成した実体をレスポンスに従い更新。
-        4. sdo_data_entryに問い合わせたデータが作成される。
+        Perform the following steps:
 
+        1. Collect OD List and use :obj:`Metadata mapper
+           <pyetg1510.etg_1510.MasterDiagnosisMetadataMapper>` Get the
+           corresponding :obj:`metadata
+           <pyetg1510.mailbox.sdo_data_factory.SdoMetadata>`
+        2. Create an entity based on the template using
+           :mod:`ConcreteSDODataFactory` and register it in sdo_data_entry.
+        3. Request the description of each OD and update the created entity
+           according to the response.
+        4. The data queried by sdo_data_entry is created.
         """
         logger.info("Fetch OD List")
-        await self.data_handler.fetch(sdo_metadata=ODListFormat, sdo_data=ODListFormat.response_container())
+        await self.data_handler.fetch(
+            sdo_metadata=ODListFormat, sdo_data=ODListFormat.response_container()
+        )
 
         for self.current_index in self.data_handler.sdo_data.ObjectIndex.value:
-            logger.info(f"==== Index {self.current_index}, format :{ODListFormat.response_container.__name__}")
-            _selected: MappingMember = MasterDiagnosisMetadataMapper.find(self.current_index)
+            logger.info(
+                f"==== Index {self.current_index},"
+                f" format :{ODListFormat.response_container.__name__}"
+            )
+            _selected: MappingMember = MasterDiagnosisMetadataMapper.find(
+                self.current_index
+            )
             if _selected is not None:
                 # Create instances by sdo factory.
-                self.sdo_data_entity.create(index=self.current_index, template=_selected.metadata.response_container)
+                self.sdo_data_entity.create(
+                    index=self.current_index,
+                    template=_selected.metadata.response_container
+                )
             else:
-                logger.warning(f"Index : {self.current_index} is not defined for any specification.")
+                logger.warning(
+                    f"Index : {self.current_index}"
+                    " is not defined for any specification."
+                )
                 continue
             SDOInfoDescriptionFormat.index = self.current_index
             logger.info("Fetch Object Description")
             await self.data_handler.fetch(
-                sdo_metadata=SDOInfoDescriptionFormat, sdo_data=SDOInfoDescriptionFormat.response_container()
+                sdo_metadata=SDOInfoDescriptionFormat,
+                sdo_data=SDOInfoDescriptionFormat.response_container()
             )
             # apply max subindex to configuration model
             if hasattr(self.data_handler.sdo_data, "MaxSubindex"):
-                _selected.metadata.max_sub_index = self.data_handler.sdo_data.MaxSubindex.value
+                sdo_data = self.data_handler.sdo_data
+                _selected.metadata.max_sub_index = sdo_data.MaxSubindex.value
             else:
                 _selected.metadata.max_sub_index = 0
             logger.info(f"Max sub index: {_selected.metadata.max_sub_index}")
@@ -139,33 +168,37 @@ class MasterODSpecification:
 
 @dataclass
 class ETG1510Profile:
-    """ETG.1510 データ収集非同期イテレータ
+    """ETG.1510 Data collection asynchronous iterator.
 
-    master_od にセットしたODリストに従い、順次SDOを収集して返すイテレータクラス。
+    Iterator class that sequentially collects and returns SDOs according to the
+    OD list set in master_od.
 
-    使用例:
+    Example of use:
         .. code-block:: python
 
             async def get_sdo_data():
                 # create iterator object
-                ittr = ETG1510Profile(master_od=<<MasterConfigurationクラスで作成したODデータモデル>>)
+                ittr = ETG1510Profile(master_od=<<OD data model created with MasterConfiguration class>>)
                 async for sdo in ittr:
                     # sdo will be possible to get each SDO as SdoDataBody type or Dictionary type.
                     pass
 
     Args:
-        master_od(MasterODSpecification): :meth:`get_object_dictionaryメソッド <pyetg1510.etg_1510.MasterODSpecification.get_object_dictionary>`
-                                        を実行してODを収集完了した後のMasterODSpecificationオブジェクト
-        watch_index_list(List[int]): 監視対象のSDOインデックスリスト。未定義の場合はOD全て対象。
+        master_od(MasterODSpecification): :meth:`<pyetg1510.etg_1510.MasterODSpecification.get_object_dictionary>`
+            MasterODSpecification object after completing collecting OD by running
+        watch_index_list(List[int]): SDO index list to watch. If undefined, all ODs are targeted.
 
     Return:
-        Tuple[int, SdoDataBody]: SDOインデックス, 取得したSDOデータコンテナ
+        Tuple[int, SdoDataBody]: SDO index, retrieved SDO data container
     """
 
     master_od: MasterODSpecification
-    """収集したメインデバイスのオブジェクトディクショナリ"""
+    """Collected main device object dictionary"""
     watch_index_list: List[int] = None
-    """イテレータで収集する際に、収集対象となるインデックスリストを指定する場合はそのリストを設定する。指定しない場合は全て返す"""
+    """
+    When collecting with an iterator, if you want to specify the index list to be
+    collected, set that list. If not specified, return all
+    """
 
     def __post_init__(self):
         self.data_handler = SdoDataController(session=self.master_od.connection, get_info=False)
@@ -195,16 +228,13 @@ class ETG1510Profile:
         return report
 
     async def get_sdo(self, index: int) -> SdoDataBody:
-        """
-        指定したインデックスのSDOを取得する
+        """Get the SDO of the specified index.
 
         Args:
-            index(int): SDOインデックス
-
+            index(int): SDO index
         Return:
-            SdoDataBody: 取得したSDOデータコンテナ
+            SdoDataBody: Obtained SDO data container
         """
-
         sdo_metadata = MasterDiagnosisMetadataMapper.find(index).metadata
         sdo_metadata.index = index
         await self.data_handler.fetch(sdo_metadata=sdo_metadata, sdo_data=self.sdo_database[index])

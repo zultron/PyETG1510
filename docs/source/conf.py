@@ -78,7 +78,7 @@ templates_path = ["_templates"]
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = "ja"
+language = "en"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -125,12 +125,12 @@ latex_engine = "lualatex"
 
 latex_docclass = {"manual": "ltjsbook"}
 
-# 改行コマンド `\\` を挟んで連結する(A)
+# Concatenate with line break command `\\` in between
 my_latex_title_lines = "\\\\".join(titles)
 
 
 class Author(Enum):
-    organization: str = "ベッコフオートメーション株式会社"
+    organization: str = "Beckhoff Automation Co., Ltd."
     author_native: str = "市橋 卓"
     author_en: str = "Takashi Ichihashi"
 
@@ -140,7 +140,7 @@ class Author(Enum):
 
 
 latex_elements = {
-    # (C) Polyglossiaパッケージを読み込まないようにする
+    # (C) Polyglossia Prevent loading packages
     "polyglossia": "",
     "fontpkg": r"""
         \setmainfont{DejaVu Serif}
@@ -149,7 +149,7 @@ latex_elements = {
         """,
     "preamble": r"""
 
-        % my_latex_title_linesをLaTeXの世界に持ち込む
+        % Bringing my_latex_title_lines into the LaTeX world
         \newcommand{\mylatextitlelines}{"""
     + my_latex_title_lines
     + r"""}
@@ -157,10 +157,10 @@ latex_elements = {
     + Author.get_strings("\\\\")
     + r"""}
 
-        % 表紙テンプレート内でアットマークが使われているため、アットマークを通常の文字として扱う
+        % Since the at sign is used in the cover template, treat it as a normal character.
         \makeatletter
 
-        % 表紙テンプレートを再定義(B)
+        % Redefine cover template(B)
         \renewcommand{\sphinxmaketitle}{%
             \let\sphinxrestorepageanchorsetting\relax
             \ifHy@pageanchor\def\sphinxrestorepageanchorsetting{\Hy@pageanchortrue}\fi
@@ -202,8 +202,8 @@ latex_elements = {
             \ifdefined\sphinxbackoftitlepage\sphinxbackoftitlepage\fi
             \if@openright\cleardoublepage\else\clearpage\fi
             \sphinxrestorepageanchorsetting
-        } % 表紙スタイル終わり
-        % アットマークを特殊文字に戻す
+        } % cover style end
+        % Change the at sign back to a special character
         \makeatother
 
         \setcounter{tocdepth}{1}

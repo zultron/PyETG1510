@@ -1,16 +1,24 @@
-This package is client software that acquire diagnostic information from the EtherCAT master with vendor independent.
+This package is Python client software that acquires vendor
+independent diagnostic information from the EtherCAT master.
 
-Various diagnostic information defined as the ETG.1510 SDO entries at the EtherCAT master, these are possible to be acquired 
-via Mailbox Gateway (ETG.8200).
+Various diagnostic information defined as the ETG.1510 SDO entries at
+the EtherCAT master, these are possible to be acquired via Mailbox
+Gateway (ETG.8200).
 
-The EtherCAT master supports not a whole OD entries of ETG.1510 specified but a partially by each vendor, further the data size of ``VISIBLE_STRING`` types is not specified on ETG 1510.
+The EtherCAT master supports not a whole OD entries of ETG.1510
+specified but a partially by each vendor, further the data size of
+``VISIBLE_STRING`` types is not specified on ETG 1510.
 
-Therefore, as first the client has to fetch SDO information by SDO information service due to know these information.
+Therefore, as first the client has to fetch SDO information by SDO
+information service due to know these information.
 
 This package has the following features.
 
-1. Acquire object dictionaries (OD) from EtherCAT master by using SDO information service. And makes python dictionary type data with a valid SDO index as the key and SDO container as the value.
-2. Acquire diagnosis data from EtherCAT master using based on valid OD entries dictionary.
+1. Acquire object dictionaries (OD) from EtherCAT master by using SDO
+   information service. And makes python dictionary type data with a
+   valid SDO index as the key and SDO container as the value.
+2. Acquire diagnosis data from EtherCAT master using based on valid OD
+   entries dictionary.
 
 These data are possible to be acquired by python asynchronous iterator.
 
@@ -22,7 +30,8 @@ $ pip install pyetg1510
 
 ## Connection
 
-If you want to know connect to Mailbox Gateway host address, Please see homepage.
+If you want to know connect to Mailbox Gateway host address, Please
+see homepage.
 
 ## Quick start
 

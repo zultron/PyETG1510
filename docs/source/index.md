@@ -1,8 +1,8 @@
-# PyETG1510 EtherCAT メインデバイス診断インターフェース Python クライアント 
+# PyETG1510 EtherCAT Main device diagnostic interface Python client
 
 ```{toctree}
 :maxdepth: 4
-:caption: APIドキュメント
+:caption: API document
 
 README.md
 modules.rst
