@@ -11,7 +11,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules"
 ]
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.8"
 poethepoet = "^0.24.0"
 bitarray = "^2.8.2"
 

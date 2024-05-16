@@ -3,7 +3,7 @@
 """
 from dataclasses import field, dataclass
 from pyetg1510.mailbox.sdo_application_interface import SdoEntry, SdoMetadata, SdoDataBody
-from typing import Union, List
+from typing import Union, List, Optional
 from enum import Enum
 from pyetg1510.mailbox import SDORequest
 
@@ -310,7 +310,7 @@ class DiagnosisData(SdoDataBody):
             return None
 
     @property
-    def al_status_code(self) -> Union[ALStatus, None]:
+    def al_status_code(self) -> Optional[SdoEntry]:
         """Alarm status of sub device"""
         if self.ALStatusCode.enable:
             return ALStausCode.get_al(self.ALStatusCode.value)
@@ -318,7 +318,7 @@ class DiagnosisData(SdoDataBody):
             return None
 
     @property
-    def al_control(self) -> Union[ALStatus, None]:
+    def al_control(self) -> Optional[SdoEntry]:
         """AL status: Main device control status of state machine"""
         if self.ALStatus.enable:
             return ALStatus(0x0F & self.ALControl.value)
@@ -326,7 +326,7 @@ class DiagnosisData(SdoDataBody):
             return None
 
     @property
-    def al_status(self) -> Union[ALStatus, None]:
+    def al_status(self) -> Optional[SdoEntry]:
         """AL status: Sub device current status of state machine"""
         if self.ALStatus.enable:
             return ALStatus(0x0F & self.ALStatus.value)

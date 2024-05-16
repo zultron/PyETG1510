@@ -88,8 +88,8 @@ class EtherCATHeader(Structure):
     _pack_ = 1
     _fields_ = [
         ("Length", c_uint16, 11),  # 'H' -> int
-        ("Reserved", c_uint8, 1),  # '?' -> bool
-        ("DataType", c_uint8, 4),  # 'B' -> int
+        ("Reserved", c_uint16, 1),  # '?' -> bool
+        ("DataType", c_uint16, 4),  # 'B' -> int
     ]
 
 
@@ -110,8 +110,8 @@ class CoEHeader(Structure):
     _pack_ = 1
     _fields_ = [
         ("Number", c_uint16, 9),  # 'H' -> int
-        ("Reserved", c_uint8, 3),  # 'B' -> int
-        ("Service", c_uint8, 4),  # 'B' -> int
+        ("Reserved", c_uint16, 3),  # 'B' -> int
+        ("Service", c_uint16, 4),  # 'B' -> int
     ]
 
 

@@ -4,7 +4,7 @@
 from pyetg1510.mailbox.sdo_application_interface import SdoEntry, SdoDataBody, SdoMetadata
 from dataclasses import dataclass, field
 from pyetg1510.mailbox import SDORequest
-from typing import Union
+from typing import Optional
 
 
 @dataclass
@@ -133,7 +133,7 @@ class ConfigurationData(SdoDataBody):
     )
 
     @property
-    def link_status(self) -> Union[LinkStatus, None]:
+    def link_status(self) -> Optional[SdoEntry]:
         if self.LinkStatus.enable:
             args = [bool(self.LinkStatus.value & 1 << i) for i in range(0, 8)]
             return LinkStatus(*args)
@@ -141,7 +141,7 @@ class ConfigurationData(SdoDataBody):
             return None
 
     @property
-    def link_preset(self) -> Union[LinkPreset, None]:
+    def link_preset(self) -> Optional[SdoEntry]:
         if self.LinkPreset.enable:
             args = [bool(self.LinkPreset.value & 1 << i) for i in range(0, 3)]
             args.extend([bool(self.LinkPreset.value & 16 << i) for i in range(0, 3)])
@@ -150,7 +150,7 @@ class ConfigurationData(SdoDataBody):
             return None
 
     @property
-    def redundancy_adapter_port(self) -> Union[int, None]:
+    def redundancy_adapter_port(self) -> Optional[int]:
         """Specified port is connected to secondary master adapter for redundancy purposes.
         zero is not used.
         """
@@ -160,7 +160,7 @@ class ConfigurationData(SdoDataBody):
             return None
 
     @property
-    def hot_connect_head_terminal(self) -> Union[bool, None]:
+    def hot_connect_head_terminal(self) -> Optional[bool]:
         """This terminal is head terminal of hot connect group"""
         if self.Flags.enable:
             return bool(self.Flags.value & 0x4)
@@ -168,7 +168,7 @@ class ConfigurationData(SdoDataBody):
             return None
 
     @property
-    def hot_connect(self) -> Union[bool, None]:
+    def hot_connect(self) -> Optional[bool]:
         """This terminal belong to hot connect group"""
         if self.Flags.enable:
             return bool(self.Flags.value & 0x8)
@@ -176,42 +176,42 @@ class ConfigurationData(SdoDataBody):
             return None
 
     @property
-    def aoe_supported(self) -> Union[bool, None]:
+    def aoe_supported(self) -> Optional[bool]:
         if self.MailboxProtocolsSupported.enable:
             return bool(self.MailboxProtocolsSupported.value & 1)
         else:
             return None
 
     @property
-    def eoe_supported(self) -> Union[bool, None]:
+    def eoe_supported(self) -> Optional[bool]:
         if self.MailboxProtocolsSupported.enable:
             return bool(self.MailboxProtocolsSupported.value & 2)
         else:
             return None
 
     @property
-    def coe_supported(self) -> Union[bool, None]:
+    def coe_supported(self) -> Optional[bool]:
         if self.MailboxProtocolsSupported.enable:
             return bool(self.MailboxProtocolsSupported.value & 4)
         else:
             return None
 
     @property
-    def foe_supported(self) -> Union[bool, None]:
+    def foe_supported(self) -> Optional[bool]:
         if self.MailboxProtocolsSupported.enable:
             return bool(self.MailboxProtocolsSupported.value & 8)
         else:
             return None
 
     @property
-    def soe_supported(self) -> Union[bool, None]:
+    def soe_supported(self) -> Optional[bool]:
         if self.MailboxProtocolsSupported.enable:
             return bool(self.MailboxProtocolsSupported.value & 16)
         else:
             return None
 
     @property
-    def voe_supported(self) -> Union[bool, None]:
+    def voe_supported(self) -> Optional[bool]:
         if self.MailboxProtocolsSupported.enable:
             return bool(self.MailboxProtocolsSupported.value & 32)
         else:
