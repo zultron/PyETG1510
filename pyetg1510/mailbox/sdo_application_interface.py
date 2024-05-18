@@ -369,6 +369,7 @@ class SdoDataController:
 
     Args:
         session(EtherCATMasterConnection): communication connector object
+        sdo_data(SdoDataBody): Data container to map to
         get_info(bool): Set `True` to query SDO Information service
     """
 
@@ -388,8 +389,8 @@ class SdoDataController:
         <pyetg1510.etg_1510.MasterODSpecification.get_object_dictionary>`
 
         Args:
-            raw_data(bytes): Data body part of response data received by Upload command
-            self.sdo_data(SdoDataBody): Data container to map to
+            raw_data(bytes): Data body part of response data received
+                by Upload command
         Raises:
             TypeError: If the format specification in struct.unpack is invalid
                 or the size does not match
