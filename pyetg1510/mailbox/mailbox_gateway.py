@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Union
 from pyetg1510.helper import SysLog
+from io import BytesIO
 
 logger = SysLog.logger
 
@@ -84,7 +85,16 @@ class MailBoxFrameOffsetAddress(Enum):
     SDO_DATA = 14
 
 
-class EtherCATHeader(Structure):
+class Header(Structure):
+    """Parent class for `Structure`-type headers with utility methods"""
+
+    def to_string(self):
+        fakefile = BytesIO()
+        fakefile.write(self)
+        return fakefile.getvalue().hex()
+
+
+class EtherCATHeader(Header):
     _pack_ = 1
     _fields_ = [
         ("Length", c_uint16, 11),  # 'H' -> int
@@ -93,7 +103,7 @@ class EtherCATHeader(Structure):
     ]
 
 
-class MailboxHeader(Structure):
+class MailboxHeader(Header):
     _pack_ = 1
     _fields_ = [
         ("Length", c_uint16, 16),  # 'H' -> int
@@ -106,7 +116,7 @@ class MailboxHeader(Structure):
     ]
 
 
-class CoEHeader(Structure):
+class CoEHeader(Header):
     _pack_ = 1
     _fields_ = [
         ("Number", c_uint16, 9),  # 'H' -> int
@@ -115,7 +125,7 @@ class CoEHeader(Structure):
     ]
 
 
-class SDORequest(Structure):
+class SDORequest(Header):
     _pack_ = 1
     _fields_ = [
         ("Reserved", c_uint8, 4),  # 'H' -> int
@@ -128,7 +138,7 @@ class SDORequest(Structure):
     ]
 
 
-class SDOResponse(Structure):
+class SDOResponse(Header):
     _pack_ = 1
     _fields_ = [
         ("SizeIndicator", c_uint8, 1),  # True : enable following size specification
@@ -141,7 +151,7 @@ class SDOResponse(Structure):
     ]
 
 
-class SDOInformationHeader(Structure):
+class SDOInformationHeader(Header):
     _pack_ = 1
     _fields_ = [
         ("Opcode", c_uint8, 7),  #
@@ -151,17 +161,17 @@ class SDOInformationHeader(Structure):
     ]
 
 
-class SDOInformationODListRequest(Structure):
+class SDOInformationODListRequest(Header):
     _fields_ = [("ListType", c_uint16, 16)]
 
 
-class SDOInformationDescriptionRequest(Structure):
+class SDOInformationDescriptionRequest(Header):
     _fields_ = [
         ("Index", c_uint16, 16),
     ]
 
 
-class SDOInformationEntryRequest(Structure):
+class SDOInformationEntryRequest(Header):
     _fields_ = [("Index", c_uint16, 16), ("Subindex", c_uint8, 8), ("ValueInfo", c_uint8, 8)]
 
 
